@@ -4,6 +4,8 @@ url: https://crumplab.github.io/ITS2
 template:
   opengraph:
     img: logo.png
+  params:
+    ganalytics: UA-79429674-11
 
 development:
   mode: unreleased

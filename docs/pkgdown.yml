@@ -1,7 +1,11 @@
 pandoc: 2.9.1.1
 pkgdown: 1.4.1
 pkgdown_sha: ~
-articles: []
+articles:
+  ITS_discrepancy_linear: ITS_discrepancy_linear.html
+  ITS_discrepancy_retrieval: ITS_discrepancy_retrieval.html
+  ITS_simple: ITS_simple.html
+  figure1: figure1.html
 urls:
   reference: https://crumplab.github.io/ITS2/reference
   article: https://crumplab.github.io/ITS2/articles
