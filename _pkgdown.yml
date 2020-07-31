@@ -3,7 +3,13 @@ url: https://crumplab.github.io/ITS2
 
 template:
   opengraph:
-    img: front.png
+    img: logo.png
+
+development:
+  mode: unreleased
+
+pkgdown:
+  as_is: true
 
 navbar:
   structure:
@@ -40,12 +46,4 @@ navbar:
     github:
       text: source code
       icon: fa-lg fa-github
-      href: https://github.com/user/repo
-
-home:
-  strip_header: true
-  Authors:
-    - text: Matthew J. C. Crump
-    - text: Randall K. Jamieson
-    - text: Brendan T. Johns
-    - text: Michael N. Jones
+      href: https://crumplab.github.io/ITS2
