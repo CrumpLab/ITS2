@@ -1,0 +1,373 @@
+---
+title: "ITS Simple"
+author: "Matt Crump"
+date: "11/18/2019"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+```{r}
+library(RsemanticLibrarian)
+library(LSAfun)
+library(ggplot2)
+library(ggcorrplot)
+library(ggpubr)
+```
+
+## Define some functions
+
+```{r}
+row_H <- function(x){
+  if(sum(x-x[1])==0) return(1)
+  return(-1*sum(x*log2(x), na.rm=TRUE))
+}
+
+matrix_H <- function(x){
+  return(mean(apply(x,1,row_H)))
+}
+
+sim_I <- function(x){
+  max_error <- dim(x)[1]*dim(x)[2]*4
+  # all ones matrix
+  same_error <- sum((x - matrix(1,ncol=dim(x)[2],nrow =dim(x)[2]))^2)
+  # identity matrix
+  diff_error <- sum((x - diag(dim(x)[1])^2))
+  
+  return(log(same_error/diff_error))
+}
+
+
+higher_order_sim <-  function(x,range=1:5, graph=FALSE){
+  if(graph==TRUE){
+    cor_plots <- list()
+    sim_save <- list()
+    cor_plots[[1]] <- ggcorrplot(x, show.legend = FALSE)
+    sim_save[[1]] <- x
+  }
+  informativeness <- sim_I(x)
+  for(i in range){
+    if(i ==1){
+      higher <- cosine(x)
+      informativeness <- c(informativeness,sim_I(higher))
+      if(graph==TRUE) {
+        cor_plots[[1+i]] <- ggcorrplot(higher, show.legend = FALSE)
+        higher[is.na(higher)]<-0
+        sim_save[[1+i]] <- higher
+      }
+    }else{
+      higher <- cosine(higher)
+      informativeness <- c(informativeness,sim_I(higher))
+      if(graph==TRUE) {
+        higher[is.na(higher)]<-0
+        sim_save[[1+i]] <- higher
+        cor_plots[[1+i]] <- ggcorrplot(higher, show.legend = FALSE)
+      }
+    }
+  }
+  
+  if(graph==TRUE) return(list(informativeness,plots=cor_plots, sims=sim_save))
+  if(graph==FALSE) return(informativeness)
+}
+
+```
+
+```{r}
+frequency_matrix <- matrix(
+  sample(1:100,10*100,replace=TRUE),
+  byrow=TRUE,
+  ncol=100,
+  nrow=10
+)
+
+overlap <- matrix(0,ncol=100,nrow=10)
+overlap[1, 1:15] <- 1
+overlap[2, 11:25] <- 1
+overlap[3, 21:35] <- 1
+overlap[4, 31:45] <- 1
+overlap[5, 41:55] <- 1
+overlap[6, 51:65] <- 1
+overlap[7, 61:75] <- 1
+overlap[8, 71:85] <- 1
+overlap[9, 81:95] <- 1
+overlap[10, c(1:5,91:100)] <- 1
+
+frequency_matrix <- frequency_matrix*overlap
+prob_matrix <- frequency_matrix/rowSums(frequency_matrix)
+veridical_sims <- cosine(prob_matrix)
+
+nth_similarity <- higher_order_sim(veridical_sims,1:5, graph=TRUE)
+
+```
+
+This piece is the function to generate sentences from the language to form the corpus.
+
+```{r}
+# sentence generator function
+generate_sentence <- function(num_to_make=100,
+                              s_length_range= 4:10,
+                              topics_to_sample = 1:10,
+                              topic_prob = rep(.1,10),
+                              prob_mat = prob_matrix){
+  all_sentences <- list()
+  for(i in 1:num_to_make){
+    sample_topic <- sample(topics_to_sample,1, prob = topic_prob)
+    sample_length <- sample(s_length_range)
+    sample_sentence <- c(sample(1:dim(prob_mat)[2],sample_length,
+                                replace=TRUE,
+                                prob=prob_mat[sample_topic,]))
+    all_sentences[[i]] <- sample_sentence
+  }
+  return(all_sentences)
+}
+```
+
+
+## Negative information at retrieval in ITS
+
+The previous set of notes showed how weighted discrepancy encoding during training might allow ITS to make use of negative information in building semantic vectors for words. Employing discrepancy encoding is computationally expensive because ITS memory has to be built one sentence at a time. In practice, this would not scale well to large corpi.
+
+It should be possible to to modify ITS to become sensitive to negative information at the time of retrieval. From what I gathered from @johnsRoleNegativeInformation2019, negative information is related in important ways to base rate information, and involves a kind of contrast between general expectations about words set by base rates, and specific expectations set by an immediate context.
+
+In ITS, a combination of deblurring and discrepancy weighting might be helpful at the time of retrieval. In the following ITS is trained on an artificial language. No discrepancy encoding is used during training. The model is evaluted at four different training steps (100, 500, 1000, and 5000 sentences).
+
+This version of ITS takes a two step process in generating an echo for each word. First, an echo is generated in the normal fashion, this is echo1. Next, echo1 is submitted as the probe to generate another echo, echo2. In other words, a single deblurring step is made.
+
+The deblurring step should bring back much more content about general base rates into echo2. Both echoes are then normalized, and echo2 (lets' presume contains more base rate info) is subtracted from echo1 (echo1 - echo2). A weighting paramater is added to the subtraction such that we can subtract different amounts of the deblurred echo from the original echo (echo1 - w*echo2).
+
+
+```{r}
+corpus <- generate_sentence(num_to_make=5000,
+                             s_length_range= 10:20,
+                             topics_to_sample = 1:10,
+                             topic_prob = rep(.1,10),
+                             prob_mat = prob_matrix)
+
+environment <- diag(100)
+
+## populate ITS memory
+
+its_memory <- matrix(0,ncol=dim(environment)[2],nrow=length(corpus))
+for(i in 1:length(corpus)){
+  its_memory[i,] <- colSums(environment[corpus[[i]],])
+}
+
+all_results <- data.frame()
+for(tau in c(.01,1,3,5,7,9)){
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    #print(t)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+    for(p in 1:100){
+      probe <- environment[p,]
+      activations <- cosine_x_to_m(probe,its_memory[1:training[t],])
+      #activations[activations !=0] <- 1
+      if(tau == .01){
+        activations[activations !=0] <- 1
+        echo1 <- colSums(as.numeric(activations)*(its_memory[1:training[t],]))
+      }else{
+        echo1 <- colSums(as.numeric(activations^tau)*(its_memory[1:training[t],]))
+      }
+      
+      #activations <- cosine_x_to_m(echo1,its_memory[1:training[t],])
+      #echo2 <- colSums(as.numeric(activations)*(its_memory[1:training[t],]))
+      semantic_vectors[p,] <- echo1
+    }
+    the_cosines <- cosine(t(semantic_vectors))
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     tau = tau)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+simple <- all_results
+save(simple,file="ITS_simple.RData")
+```
+
+
+The results of the simulation are displayed below. The facets show the effect of changing the weighting parameter (how much of echo2 is subtracted from echo1). ITS word-word similarity matrices are computed, and then comapred againts the 1st to 4th order word-word similarity matrices directly from the language. So, we can see which aspects of the language the model becomes sensitive to with practice, and as a function of deblurring/discrepancy at retrieval.
+
+Overall, this retrieval rule seems to be doing something quite interesting. Without it, ITS is most similar to the second order similarity structure of the grammar. However, with retrieval deblurring/discrepancy subtraction at retrieval, it seems that there is a range where ITS becomes more sensitive to the first-order structure, which is more directly related to the topic structure that generated the corpus. Increasing the amount of "negative information" or whatever is happening here, has diminishing returns, but along the way, also seems to increasingly favor first order similarity, over the others which succesively become less similar to ITS vectors.
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~tau)
+```
+
+
+
+## monte-carlo
+
+```{r}
+
+save_all_simple <- data.frame()
+for(mc in 1:10){
+
+frequency_matrix <- matrix(
+  sample(1:100,10*100,replace=TRUE),
+  byrow=TRUE,
+  ncol=100,
+  nrow=10
+)
+
+overlap <- matrix(0,ncol=100,nrow=10)
+overlap[1, 1:15] <- 1
+overlap[2, 11:25] <- 1
+overlap[3, 21:35] <- 1
+overlap[4, 31:45] <- 1
+overlap[5, 41:55] <- 1
+overlap[6, 51:65] <- 1
+overlap[7, 61:75] <- 1
+overlap[8, 71:85] <- 1
+overlap[9, 81:95] <- 1
+overlap[10, c(1:5,91:100)] <- 1
+
+frequency_matrix <- frequency_matrix*overlap
+prob_matrix <- frequency_matrix/rowSums(frequency_matrix)
+veridical_sims <- cosine(prob_matrix)
+
+nth_similarity <- higher_order_sim(veridical_sims,1:5, graph=TRUE)
+
+corpus <- generate_sentence(num_to_make=5000,
+                             s_length_range= 10:20,
+                             topics_to_sample = 1:10,
+                             topic_prob = rep(.1,10),
+                             prob_mat = prob_matrix)
+
+environment <- diag(100)
+
+## populate ITS memory
+
+its_memory <- matrix(0,ncol=dim(environment)[2],nrow=length(corpus))
+for(i in 1:length(corpus)){
+  its_memory[i,] <- colSums(environment[corpus[[i]],])
+}
+
+all_results <- data.frame()
+for(tau in c(.01,1,3,5,7,9)){
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    #print(t)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+    for(p in 1:100){
+      probe <- environment[p,]
+      activations <- cosine_x_to_m(probe,its_memory[1:training[t],])
+      #activations[activations !=0] <- 1
+      if(tau == .01){
+        activations[activations !=0] <- 1
+        echo1 <- colSums(as.numeric(activations)*(its_memory[1:training[t],]))
+      }else{
+        echo1 <- colSums(as.numeric(activations^tau)*(its_memory[1:training[t],]))
+      }
+      
+      #activations <- cosine_x_to_m(echo1,its_memory[1:training[t],])
+      #echo2 <- colSums(as.numeric(activations)*(its_memory[1:training[t],]))
+      semantic_vectors[p,] <- echo1
+    }
+    the_cosines <- cosine(t(semantic_vectors))
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     tau = tau,
+                     iter = mc)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+simple <- all_results
+
+save_all_simple <- rbind(save_all_simple,simple)
+
+}
+
+```
+
+```{r}
+
+final_simple <- save_all_simple %>%
+  group_by(training,order,tau) %>%
+  summarise(mean_sim = mean(sims),
+            er_sim = sd(sims)/sqrt(length(sims)))
+
+ggplot(final_simple, aes(x=training,y=mean_sim, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~tau)
+
+simple$tau[simple$tau==.01]<-0
+# ggplot(simple, aes(x=training,y=sims, group=order, linetype=order,
+#                    shape=order))+
+#   geom_point()+
+#   geom_line()+
+#   xlab("Sentence Memory")+
+#   ylab(expression(R^2))+
+#   scale_y_continuous(breaks=seq(.5,1,.1))+
+#   coord_cartesian(ylim=c(.5,1))+
+#   theme_classic()+
+#   theme(axis.text.x = element_text(angle = 90))+
+#   facet_wrap(~tau)
+
+ggplot(final_simple, aes(x=tau,y=mean_sim, group=order, linetype=order,
+                   shape=order))+
+  geom_point()+
+  geom_line()+
+  geom_errorbar(aes(ymin = mean_sim - er_sim, ymax = mean_sim +er_sim))+
+  xlab(expression(tau))+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(.5,1,.1))+
+  scale_x_continuous(breaks=c(0,1,3,5,7,9))+
+  coord_cartesian(ylim=c(.5,1))+
+  theme_classic(base_size=18)+
+  theme(axis.text.x = element_text(angle = 0))+
+  facet_wrap(~training)
+  
+```
+
+
+
+
+# References
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,46 @@
+# see https://pkgdown.r-lib.org/articles/pkgdown.html for yml help
+
+navbar:
+  structure:
+    left:
+    - home
+    - manuscript
+    - articles
+    - slides
+    - posters
+    - experiments
+    right:
+    - github
+    - reference
+  components:
+    home:
+      icon: fa-home fa-lg
+      href: index.html
+    manuscript:
+      text: Manuscript
+      menu:
+      - text: Controlling the retrieval of general vs specific semantic knowledge in the instance theory of semantic memory
+        href: manuscript/Crumpetal_Cogsci2020.pdf
+    articles:
+      text: Supplementary
+      menu:
+      - text: Figure 1
+        href: articles/figure1.html
+      - text: Simulation 1 ITS
+        href: articles/ITS_simple.html
+      - text: Simulation 2 ITS2 encoding
+        href: articles/ITS_discrepancy_linear.html
+      - text: Simulation 3 ITS retrieval
+        href: articles/ITS_discrepancy_retrieval.html
+    github:
+      text: source code
+      icon: fa-lg fa-github
+      href: https://github.com/user/repo
+
+home:
+  strip_header: true
+  Authors:
+    - text: Matthew J. C. Crump
+    - text: Randall K. Jamieson
+    - text: Brendan T. Johns
+    - text: Michael N. Jones

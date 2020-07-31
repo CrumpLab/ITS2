@@ -1,0 +1,349 @@
+\begin{thebibliography}{}
+
+\bibitem [\protect \citeauthoryear {%
+Cribbin%
+}{%
+Cribbin%
+}{%
+{\protect \APACyear {2011}}%
+}]{%
+cribbinDiscoveringLatentTopical2011}
+\APACinsertmetastar {%
+cribbinDiscoveringLatentTopical2011}%
+\begin{APACrefauthors}%
+Cribbin, T.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2011}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Discovering Latent Topical Structure by Second-Order
+  Similarity Analysis} {Discovering latent topical structure by second-order
+  similarity analysis}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of the American Society for Information Science
+  and Technology}{62}{}{1188--1207}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Hintzman%
+}{%
+Hintzman%
+}{%
+{\protect \APACyear {1984}}%
+}]{%
+hintzmanMINERVASimulationModel1984}
+\APACinsertmetastar {%
+hintzmanMINERVASimulationModel1984}%
+\begin{APACrefauthors}%
+Hintzman, D\BPBI L.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{1984}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {{{MINERVA}} 2: {{A}} Simulation Model of Human Memory}
+  {{{MINERVA}} 2: {{A}} simulation model of human memory}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Behavior Research Methods, Instruments, \&
+  Computers}{16}{}{96--101}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Jacoby%
+\ \BBA {} Brooks%
+}{%
+Jacoby%
+\ \BBA {} Brooks%
+}{%
+{\protect \APACyear {1984}}%
+}]{%
+jacobyNonanalyticCognitionMemory1984}
+\APACinsertmetastar {%
+jacobyNonanalyticCognitionMemory1984}%
+\begin{APACrefauthors}%
+Jacoby, L\BPBI L.%
+\BCBT {}\ \BBA {} Brooks, L\BPBI R.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{1984}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Nonanalytic Cognition: {{Memory}}, Perception, and
+  Concept Learning} {Nonanalytic cognition: {{Memory}}, perception, and concept
+  learning}.{\BBCQ}
+\newblock
+\BIn{} G\BPBI H.~Bower\ (\BED), \APACrefbtitle {The Psychology of Learning and
+  Motivation} {The psychology of learning and motivation}\ (\BVOL~18, \BPGS\
+  1--47).
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Jamieson%
+, Avery%
+, Johns%
+\BCBL {}\ \BBA {} Jones%
+}{%
+Jamieson%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2018}}%
+}]{%
+jamiesonInstanceTheorySemantic2018a}
+\APACinsertmetastar {%
+jamiesonInstanceTheorySemantic2018a}%
+\begin{APACrefauthors}%
+Jamieson, R\BPBI K.%
+, Avery, J\BPBI E.%
+, Johns, B\BPBI T.%
+\BCBL {}\ \BBA {} Jones, M\BPBI N.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2018}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {An Instance Theory of Semantic Memory} {An instance
+  theory of semantic memory}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Computational Brain \& Behavior}{1}{}{119--136}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Jamieson%
+, Crump%
+\BCBL {}\ \BBA {} Hannah%
+}{%
+Jamieson%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2012}}%
+}]{%
+jamiesonInstanceTheoryAssociative2012}
+\APACinsertmetastar {%
+jamiesonInstanceTheoryAssociative2012}%
+\begin{APACrefauthors}%
+Jamieson, R\BPBI K.%
+, Crump, M\BPBI J\BPBI C.%
+\BCBL {}\ \BBA {} Hannah, S\BPBI D.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2012}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {An Instance Theory of Associative Learning} {An instance
+  theory of associative learning}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Learning \& Behavior}{40}{}{61--82}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Johns%
+, Mewhort%
+\BCBL {}\ \BBA {} Jones%
+}{%
+Johns%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2019}}%
+}]{%
+johnsRoleNegativeInformation2019}
+\APACinsertmetastar {%
+johnsRoleNegativeInformation2019}%
+\begin{APACrefauthors}%
+Johns, B\BPBI T.%
+, Mewhort, D\BPBI J\BPBI K.%
+\BCBL {}\ \BBA {} Jones, M\BPBI N.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2019}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {The {{Role}} of {{Negative Information}} in
+  {{Distributional Semantic Learning}}} {The {{Role}} of {{Negative
+  Information}} in {{Distributional Semantic Learning}}}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Cognitive Science}{43}{}{e12730}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Jones%
+\ \BBA {} Mewhort%
+}{%
+Jones%
+\ \BBA {} Mewhort%
+}{%
+{\protect \APACyear {2007}}%
+}]{%
+jonesRepresentingWordMeaning2007}
+\APACinsertmetastar {%
+jonesRepresentingWordMeaning2007}%
+\begin{APACrefauthors}%
+Jones, M\BPBI N.%
+\BCBT {}\ \BBA {} Mewhort, D\BPBI J\BPBI K.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2007}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Representing Word Meaning and Order Information in a
+  Composite Holographic Lexicon.} {Representing word meaning and order
+  information in a composite holographic lexicon.}{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Psychological Review}{114}{}{1--37}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Kelly%
+, Reitter%
+\BCBL {}\ \BBA {} West%
+}{%
+Kelly%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2017}}%
+}]{%
+kelly2013}
+\APACinsertmetastar {%
+kelly2013}%
+\begin{APACrefauthors}%
+Kelly, M\BPBI A.%
+, Reitter, D.%
+\BCBL {}\ \BBA {} West, R\BPBI L.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2017}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Degrees of separation in semantic and syntactic
+  relationships} {Degrees of separation in semantic and syntactic
+  relationships}.{\BBCQ}
+\newblock
+\BIn{} M\BPBI K.~van Vugt, A\BPBI P.~Banks\BCBL {}\ \BBA {} W\BPBI G.~Kennedy\
+  (\BEDS), \APACrefbtitle {Proceedings of the 15th International Conference on
+  Cognitive Modeling} {Proceedings of the 15th international conference on
+  cognitive modeling}\ (\BPG~199-204).
+\newblock
+\APACaddressPublisher{}{{Coventry, United Kingdom: University of Warwick}}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Landauer%
+\ \BBA {} Dumais%
+}{%
+Landauer%
+\ \BBA {} Dumais%
+}{%
+{\protect \APACyear {1997}}%
+}]{%
+landauerSolutionPlatoProblem1997}
+\APACinsertmetastar {%
+landauerSolutionPlatoProblem1997}%
+\begin{APACrefauthors}%
+Landauer, T\BPBI K.%
+\BCBT {}\ \BBA {} Dumais, S\BPBI T.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{1997}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {A {{Solution}} to {{Plato}}'s {{Problem}}: {{The Latent
+  Semantic Analysis Theory}} of {{Acquisition}}, {{Induction}}, and
+  {{Representation}} of {{Knowledge}}} {A {{Solution}} to {{Plato}}'s
+  {{Problem}}: {{The Latent Semantic Analysis Theory}} of {{Acquisition}},
+  {{Induction}}, and {{Representation}} of {{Knowledge}}}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Psychological Review}{104}{}{211--240}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Mandera%
+, Keuleers%
+\BCBL {}\ \BBA {} Brysbaert%
+}{%
+Mandera%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2017}}%
+}]{%
+manderaExplainingHumanPerformance2017a}
+\APACinsertmetastar {%
+manderaExplainingHumanPerformance2017a}%
+\begin{APACrefauthors}%
+Mandera, P.%
+, Keuleers, E.%
+\BCBL {}\ \BBA {} Brysbaert, M.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2017}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Explaining Human Performance in Psycholinguistic Tasks
+  with Models of Semantic Similarity Based on Prediction and Counting: {{A}}
+  Review and Empirical Validation} {Explaining human performance in
+  psycholinguistic tasks with models of semantic similarity based on prediction
+  and counting: {{A}} review and empirical validation}.{\BBCQ}
+\newblock
+\APACjournalVolNumPages{Journal of Memory and Language}{92}{}{57--78}.
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Mikolov%
+, Sutskever%
+, Chen%
+, Corrado%
+\BCBL {}\ \BBA {} Dean%
+}{%
+Mikolov%
+\ \protect \BOthers {.}}{%
+{\protect \APACyear {2013}}%
+}]{%
+mikolovDistributedRepresentationsWords2013}
+\APACinsertmetastar {%
+mikolovDistributedRepresentationsWords2013}%
+\begin{APACrefauthors}%
+Mikolov, T.%
+, Sutskever, I.%
+, Chen, K.%
+, Corrado, G\BPBI S.%
+\BCBL {}\ \BBA {} Dean, J.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2013}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {Distributed Representations of Words and Phrases and
+  Their Compositionality} {Distributed representations of words and phrases and
+  their compositionality}.{\BBCQ}
+\newblock
+\BIn{} \APACrefbtitle {Advances in Neural Information Processing Systems}
+  {Advances in neural information processing systems}\ (\BPGS\ 3111--3119).
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
+Rescorla%
+\ \BBA {} Wagner%
+}{%
+Rescorla%
+\ \BBA {} Wagner%
+}{%
+{\protect \APACyear {1972}}%
+}]{%
+rescorlaTheoryPavlovianConditioning1972}
+\APACinsertmetastar {%
+rescorlaTheoryPavlovianConditioning1972}%
+\begin{APACrefauthors}%
+Rescorla, R\BPBI A.%
+\BCBT {}\ \BBA {} Wagner, A\BPBI R.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{1972}{}{}.
+\newblock
+{\BBOQ}\APACrefatitle {A Theory of {{Pavlovian}} Conditioning: {{Variations}}
+  in the Effectiveness of Reinforcement and Nonreinforcement} {A theory of
+  {{Pavlovian}} conditioning: {{Variations}} in the effectiveness of
+  reinforcement and nonreinforcement}.{\BBCQ}
+\newblock
+\BIn{} A\BPBI H.~Black\ \BBA {} W\BPBI F.~Prokasy\ (\BEDS), \APACrefbtitle
+  {Classical Conditioning {{II}}: {{Current}} Research and Theory} {Classical
+  conditioning {{II}}: {{Current}} research and theory}\ (\BPGS\ 64--99).
+\newblock
+\APACaddressPublisher{}{{New York: Appleton-Century Crofts}}.
+\PrintBackRefs{\CurrentBib}
+
+\end{thebibliography}

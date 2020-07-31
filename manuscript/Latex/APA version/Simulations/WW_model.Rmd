@@ -1,0 +1,839 @@
+---
+title: "WW model"
+author: "Matt Crump"
+date: "11/18/2019"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+```{r}
+library(RsemanticLibrarian)
+library(LSAfun)
+library(ggplot2)
+library(ggcorrplot)
+library(ggpubr)
+```
+
+## Define some functions
+
+```{r}
+row_H <- function(x){
+  if(sum(x-x[1])==0) return(1)
+  return(-1*sum(x*log2(x), na.rm=TRUE))
+}
+
+matrix_H <- function(x){
+  return(mean(apply(x,1,row_H)))
+}
+
+sim_I <- function(x){
+  max_error <- dim(x)[1]*dim(x)[2]*4
+  # all ones matrix
+  same_error <- sum((x - matrix(1,ncol=dim(x)[2],nrow =dim(x)[2]))^2)
+  # identity matrix
+  diff_error <- sum((x - diag(dim(x)[1])^2))
+  
+  return(log(same_error/diff_error))
+}
+
+
+higher_order_sim <-  function(x,range=1:5, graph=FALSE){
+  if(graph==TRUE){
+    cor_plots <- list()
+    sim_save <- list()
+    cor_plots[[1]] <- ggcorrplot(x, show.legend = FALSE)
+    sim_save[[1]] <- x
+  }
+  informativeness <- sim_I(x)
+  for(i in range){
+    if(i ==1){
+      higher <- cosine(x)
+      informativeness <- c(informativeness,sim_I(higher))
+      if(graph==TRUE) {
+        cor_plots[[1+i]] <- ggcorrplot(higher, show.legend = FALSE)
+        higher[is.na(higher)]<-0
+        sim_save[[1+i]] <- higher
+      }
+    }else{
+      higher <- cosine(higher)
+      informativeness <- c(informativeness,sim_I(higher))
+      if(graph==TRUE) {
+        higher[is.na(higher)]<-0
+        sim_save[[1+i]] <- higher
+        cor_plots[[1+i]] <- ggcorrplot(higher, show.legend = FALSE)
+      }
+    }
+  }
+  
+  if(graph==TRUE) return(list(informativeness,plots=cor_plots, sims=sim_save))
+  if(graph==FALSE) return(informativeness)
+}
+
+```
+
+## define language
+
+```{r}
+frequency_matrix <- matrix(
+  sample(1:100,10*100,replace=TRUE),
+  byrow=TRUE,
+  ncol=100,
+  nrow=10
+)
+
+overlap <- matrix(0,ncol=100,nrow=10)
+overlap[1, 1:15] <- 1
+overlap[2, 11:25] <- 1
+overlap[3, 21:35] <- 1
+overlap[4, 31:45] <- 1
+overlap[5, 41:55] <- 1
+overlap[6, 51:65] <- 1
+overlap[7, 61:75] <- 1
+overlap[8, 71:85] <- 1
+overlap[9, 81:95] <- 1
+overlap[10, c(1:5,91:100)] <- 1
+
+frequency_matrix <- frequency_matrix*overlap
+prob_matrix <- frequency_matrix/rowSums(frequency_matrix)
+veridical_sims <- cosine(prob_matrix)
+
+nth_similarity <- higher_order_sim(veridical_sims,1:5, graph=TRUE)
+
+```
+
+sentence generator function
+
+```{r}
+# sentence generator function
+generate_sentence <- function(num_to_make=100,
+                              s_length_range= 4:10,
+                              topics_to_sample = 1:10,
+                              topic_prob = rep(.1,10),
+                              prob_mat = prob_matrix){
+  all_sentences <- list()
+  for(i in 1:num_to_make){
+    sample_topic <- sample(topics_to_sample,1, prob = topic_prob)
+    sample_length <- sample(s_length_range)
+    sample_sentence <- c(sample(1:dim(prob_mat)[2],sample_length,
+                                replace=TRUE,
+                                prob=prob_mat[sample_topic,]))
+    all_sentences[[i]] <- sample_sentence
+  }
+  return(all_sentences)
+}
+```
+
+## make corpus
+
+```{r}
+corpus <- generate_sentence(num_to_make=5000,
+                             s_length_range= 10:20,
+                             topics_to_sample = 1:10,
+                             topic_prob = rep(.1,10),
+                             prob_mat = prob_matrix)
+
+## WW model
+# get_window_cooccur <- function(x, e){
+#   f  <- e[x,]
+#   ff <- t(f)%*%f
+#   return(diag(ff) %*% t(diag(ff)))
+# }
+
+window_co_occur <- function(x, dim=100){
+  emptyWW <- matrix(0,ncol=dim, nrow=dim)
+  for(i in 1:length(x)){
+    t_x <- table(x[-i])
+    nt_x <- as.numeric(names(t_x))
+    emptyWW[x[i],nt_x] <- t_x
+  }
+  return(emptyWW)
+}
+
+```
+
+## run WW with only positive information
+
+```{r}
+## populate ITS memory
+
+all_results <- data.frame()
+for(ws in c(3,4,5,6,7,8)){
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    print(ws)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+  
+    WW <- matrix(0, ncol=100, nrow=100)
+    #environment <- diag(100)
+    w_size <- ws
+    
+    for(s in 1:training[t]){
+      sentence <- corpus[[s]]
+      for(i in 1:(length(sentence)-w_size+1)){
+        WW <- WW+window_co_occur(sentence[i:(i+w_size-1)],100)
+      }
+    }
+    
+    the_cosines <- cosine(WW)
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     window = ws)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+#WW <- all_results
+#save(WW,file="WW.RData")
+```
+
+## Sensitivity of model to 1st to fourth order similarity, as a function of window-size
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~window)
+```
+
+## WW with GN transformation
+
+```{r}
+GN_transformation <- function(WW){
+  GN <- colSums(WW)
+  GN_prob <- GN/sum(GN)
+  neg_mat<-GN%*%t(GN_prob)*sign(WW)
+  GNTran <- WW-neg_mat
+  return(GNTran)
+}
+
+WW <- matrix(c(0,7,1,4,
+  7,0,1,2,
+  1,1,0,10,
+  4,2,10,0), ncol=4, nrow=4, byrow=T)
+
+GN_transformation(WW)
+
+```
+
+## run model
+
+```{r}
+## populate ITS memory
+
+all_results <- data.frame()
+for(ws in c(3,4,5,6,7,8)){
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    #print(t)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+  
+    WW <- matrix(0, ncol=100, nrow=100)
+    environment <- diag(100)
+    w_size <- ws
+    
+    for(s in 1:training[t]){
+      sentence <- corpus[[s]]
+      for(i in 1:(length(sentence)-w_size+1)){
+        WW <- WW+window_co_occur(sentence[i:(i+w_size-1)],100)
+      }
+    }
+    WW <- GN_transformation(WW)
+    the_cosines <- cosine(WW)
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     window = ws)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+#WW <- all_results
+#save(simple,file="WW.RData")
+```
+
+# results of WW with GN transform
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~window)
+```
+
+
+
+## run WW with negative information
+
+I think this is equivalent to sub-sampling words that don't occur in a sentence completely randomly, with no bias toward sub-sampling high frequency words. This doesn't work well.
+
+```{r}
+## populate ITS memory
+
+all_results <- data.frame()
+for(ws in c(3,4,5,6,7,8)){
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    #print(t)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+  
+    WW <- matrix(0, ncol=100, nrow=100)
+    environment <- diag(100)
+    w_size <- ws
+    
+    for(s in 1:training[t]){
+      sentence <- corpus[[s]]
+      for(i in 1:(length(sentence)-w_size+1)){
+        the_sentence <-sentence[i:(i+w_size-1)]
+        all <- 1:100
+        not_in_all <- which(all %in% sentence ==FALSE)
+        negative_sample <- sample(not_in_all,length(the_sentence))
+        positive <- get_window_cooccur(sentence[i:(i+w_size-1)],environment)
+        negative <- get_window_cooccur(negative_sample,environment)*-1
+        composite <- positive+negative
+        WW <- WW+composite
+      }
+    }
+    
+    the_cosines <- cosine(WW)
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     window = ws)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+#WW <- all_results
+#save(WW,file="WW.RData")
+```
+
+## Sensitivity of model to 1st to fourth order similarity, as a function of window-size
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~window)
+```
+
+```{r}
+
+overallprob <- matrix(.1, ncol=100, nrow=10)
+
+total_prob <- prob_matrix*overallprob
+
+word_prob_total <- colSums(total_prob)
+
+nsp<-(sqrt(word_prob_total/6e-6)+1)*(6e-6/word_prob_total)
+
+plot(sort(word_prob_total*nsp))
+
+nsp2 <- word_prob_total*nsp
+
+  
+window_co_occur2 <- function(x,k,np){
+  emptyWW <- matrix(0,ncol=100,nrow=100)
+  all <- 1:100
+  not_in_all <- which(all %in% x ==FALSE)
+  neg_prob <- np[not_in_all]
+  neg_prob <-neg_prob/sum(neg_prob)
+  for(i in 1:length(x)){
+    t_x <- table(x)
+    emptyWW[x[i],as.numeric(names(t_x[-i]))] <- t_x[-i]
+    neg_info_words <- sample(not_in_all,k,prob=neg_prob)
+    emptyWW[x[i],neg_info_words] <- -1
+  }
+  return(emptyWW)
+}
+
+window_co_occur2(c(1,2,2,3),2,nsp)
+x<-c(1,2,2,3)
+a<-table(corpus[[1]])
+as.numeric(names(a))
+as.numeric(a)
+
+window_co_occur <- function(x, dim=100){
+  emptyWW <- matrix(0,ncol=dim, nrow=dim)
+  for(i in 1:length(x)){
+    t_x <- table(x[-i])
+    nt_x <- as.numeric(names(t_x))
+    emptyWW[x[i],nt_x] <- t_x
+  }
+  return(emptyWW)
+}
+
+window_co_occur(c(1,2,2,3))
+
+```
+
+## run WW with negative information 2
+
+
+```{r}
+## populate ITS memory
+
+all_results <- data.frame()
+for(ws in c(3,4,5,6,7,8)){
+  print(ws)
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    #print(t)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+  
+    WW <- matrix(0, ncol=100, nrow=100)
+    environment <- diag(100)
+    w_size <- ws
+    
+    for(s in 1:training[t]){
+      sentence <- corpus[[s]]
+      for(i in 1:(length(sentence)-w_size+1)){
+        the_sentence <-sentence[i:(i+w_size-1)]
+        composite <- window_co_occur2(the_sentence,1,nsp2)
+        WW <- WW+composite
+      }
+    }
+    
+    the_cosines <- cosine(WW)
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     window = ws)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+#WW <- all_results
+#save(WW,file="WW.RData")
+```
+
+## Sensitivity of model to 1st to fourth order similarity, as a function of window-size
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~window)
+```
+
+
+
+## run WW with negative information 2
+
+
+```{r}
+## populate ITS memory
+
+all_results <- data.frame()
+for(ws in c(1,2,3,4,5,6)){
+  print(ws)
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    #print(t)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+  
+    WW <- matrix(0, ncol=100, nrow=100)
+    environment <- diag(100)
+    w_size <- 6
+    
+    for(s in 1:training[t]){
+      sentence <- corpus[[s]]
+      for(i in 1:(length(sentence)-w_size+1)){
+        the_sentence <-sentence[i:(i+w_size-1)]
+        composite <- window_co_occur2(the_sentence,ws,nsp)
+        WW <- WW+composite
+      }
+    }
+    
+    the_cosines <- cosine(WW)
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     window = ws)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+#WW <- all_results
+#save(WW,file="WW.RData")
+```
+
+## Sensitivity of model to 1st to fourth order similarity, as a function of window-size
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~window)
+```
+
+
+
+### faster
+
+## define language
+
+```{r}
+frequency_matrix <- matrix(
+  sample(1:100,10*100,replace=TRUE),
+  byrow=TRUE,
+  ncol=100,
+  nrow=10
+)
+
+overlap <- matrix(0,ncol=100,nrow=10)
+overlap[1, 1:15] <- 1
+overlap[2, 11:25] <- 1
+overlap[3, 21:35] <- 1
+overlap[4, 31:45] <- 1
+overlap[5, 41:55] <- 1
+overlap[6, 51:65] <- 1
+overlap[7, 61:75] <- 1
+overlap[8, 71:85] <- 1
+overlap[9, 81:95] <- 1
+overlap[10, c(1:5,91:100)] <- 1
+
+frequency_matrix <- frequency_matrix*overlap
+prob_matrix <- frequency_matrix/rowSums(frequency_matrix)
+veridical_sims <- cosine(prob_matrix)
+
+nth_similarity <- higher_order_sim(veridical_sims,1:5, graph=TRUE)
+
+```
+
+sentence generator function
+
+```{r}
+# sentence generator function
+generate_sentence <- function(num_to_make=100,
+                              s_length_range= 4:10,
+                              topics_to_sample = 1:10,
+                              topic_prob = rep(.1,10),
+                              prob_mat = prob_matrix){
+  all_sentences <- list()
+  for(i in 1:num_to_make){
+    sample_topic <- sample(topics_to_sample,1, prob = topic_prob)
+    sample_length <- sample(s_length_range)
+    sample_sentence <- c(sample(1:dim(prob_mat)[2],sample_length,
+                                replace=TRUE,
+                                prob=prob_mat[sample_topic,]))
+    all_sentences[[i]] <- sample_sentence
+  }
+  return(all_sentences)
+}
+```
+
+## WW with GN transformation
+
+```{r}
+GN_transformation <- function(WW){
+  GN <- colSums(WW)
+  GN_prob <- GN/sum(GN)
+  neg_mat<-GN%*%t(GN_prob)*sign(WW)
+  GNTran <- WW-neg_mat
+  return(GNTran)
+}
+
+WW <- matrix(c(0,7,1,4,
+  7,0,1,2,
+  1,1,0,10,
+  4,2,10,0), ncol=4, nrow=4, byrow=T)
+
+GN_transformation(WW)
+
+popsd <- function(x){
+  return(sqrt(sum((mean(x)-x)^2)/length(x)))
+}
+
+apply_add <- function(x,y){
+  return(x+y)
+}
+
+apply_mult <- function(x,y){
+  return(x*y)
+}
+
+DOA_transformation <- function(WW){
+  WW_M <- colMeans(WW)
+  WW_sd <- apply(WW,2,popsd)
+  WW2 <- apply(WW,2,FUN=function(x){x-WW_M})
+  WW2 <- t(apply(WW2,2,FUN=function(x){x/WW_sd}))
+  some_ones <- matrix(1,ncol=dim(WW)[1],nrow=dim(WW)[2])
+  diag(some_ones)<-0
+  WW2 <- WW2*some_ones
+  WWrm <- apply(WW2,1,mean)
+  WWrsd <- apply(WW2,1,popsd)
+  WW4 <- apply(WW2,2,FUN=function(x){x-WWrm} )
+  WW4 <- apply(WW4,2,FUN=function(x){x/WWrsd} )
+  WW4 <- WW4* some_ones
+  return(WW4)
+}
+
+DOA_transformation(WW)
+
+```
+
+## make corpus
+
+```{r}
+corpus <- generate_sentence(num_to_make=5000,
+                             s_length_range= 10:20,
+                             topics_to_sample = 1:10,
+                             topic_prob = rep(.1,10),
+                             prob_mat = prob_matrix)
+
+## WW model
+ get_window_cooccur <- function(x, e){
+   f  <- e[x,]
+   ff <- t(f)%*%f
+   return(diag(ff) %*% t(diag(ff)))
+ }
+
+window_co_occur <- function(x, dim=100){
+  emptyWW <- matrix(0,ncol=dim, nrow=dim)
+  for(i in 1:length(x)){
+    t_x <- table(x[-i])
+    nt_x <- as.numeric(names(t_x))
+    emptyWW[x[i],nt_x] <- t_x
+  }
+  return(emptyWW)
+}
+
+window_co_occur2 <- function(x, dim=100){
+  emptyWW <- matrix(0,ncol=dim, nrow=dim)
+  for(i in 1:length(x)){
+    t_x <- table(x[-i])
+    nt_x <- as.numeric(names(t_x))
+    emptyWW[x[i],nt_x] <- emptyWW[x[i],nt_x]+t_x
+  }
+  return(emptyWW)
+}
+
+```
+
+## run WW with only positive information
+
+```{r}
+## populate ITS memory
+
+all_results <- data.frame()
+for(ws in c(3,4)){
+  training <- c(1000,2000,4000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    print(ws)
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+  
+    WW <- matrix(0, ncol=100, nrow=100)
+    environment <- diag(100)
+    w_size <- ws
+    
+    for(s in 1:training[t]){
+      sentence <- corpus[[s]]
+      for(i in 1:(length(sentence)-w_size+1)){
+        WW <- WW+window_co_occur2(sentence[i:(i+w_size-1)],100)
+       # WW <- WW+get_window_cooccur(sentence[i:(i+w_size-1)],diag(100))
+      }
+    }
+   #WW <- GN_transformation(WW)
+    WW <- DOA_transformation(WW)
+    the_cosines <- cosine(WW)
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     window = ws)
+  all_results <- rbind(all_results,nth_df)
+}
+  
+#WW <- all_results
+#save(WW,file="WW.RData")
+```
+
+## Sensitivity of model to 1st to fourth order similarity, as a function of window-size
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("R^2")+
+  facet_wrap(~window)
+```
+
+
+```{r}
+# turn corpus into windowed corpus
+windowed_corpus <- function(num_sentences,corpus,window){
+  a<-lapply(1:num_sentences,FUN =function(x){embed(corpus[[x]],window)[ ,window:1]})
+  b<-do.call(rbind, a)
+  return(b)
+}
+
+# WW function
+window_co_occur2 <- function(x, WW_in = WW, dim=100){
+  #emptyWW <- matrix(0,ncol=dim, nrow=dim)
+  for(i in 1:length(x)){
+    t_x <- table(x[-i])
+    nt_x <- as.numeric(names(t_x))
+    WW_in[x[i],nt_x] <- WW_in[x[i],nt_x]+t_x
+  }
+  return(WW_in)
+ }
+ 
+# get WW matrices as a function of training 
+get_WW_training <- function(wcorpus,max_train=5000,
+                            training_intervals = c(100,500,1000,5000),
+                            n_words = 100){
+  WW_list<-list()
+  lcnt<-0
+  WW <- matrix(0, ncol=n_words, nrow=n_words)
+  for(i in 1:max_train){
+    WW <- window_co_occur2(a[i,],WW,n_words)
+    if(i %in% training_intervals == TRUE){
+      lcnt<-lcnt+1
+      WW_list[[lcnt]] <- WW
+    }
+  }
+  WW_list <- setNames(WW_list,training_intervals)
+  return(WW_list)
+}
+
+# compute R squared
+get_rsquared <- function(WW,nth,ws){
+  all_df <- data.frame()
+  for(i in 1:length(WW)){
+    word_vec <- c(WW[[i]])
+    word_vec[is.na(word_vec)] <- 0
+    for(j in 1:length(nth$sims)){
+      nth_vec <- c(nth$sims[j][[1]])
+      nth_vec[is.na(nth_vec)] <- 0
+      rsquare <- cor(word_vec,nth_vec)^2
+      t_df <- data.frame(window=ws,
+                         training = as.character(names(WW[i])),
+                         order = j,
+                         rsquare = rsquare)
+      all_df <- rbind(all_df,t_df)
+    }
+  }
+  return(all_df)
+}
+
+wcorpus <- windowed_corpus(5000,corpus,8)
+
+WW_all <- get_WW_training(wcorpus = a,
+                          max_train = 5000,
+                          training_intervals = c(100,500,1000,5000),
+                          n_words=100)
+
+WW_cosines <- lapply(WW_all,cosine)
+
+results <- get_rsquared(WW_cosines,nth_similarity,8)
+
+runWW <- function(max_sentences,
+                  corpus,
+                  ws,
+                  ti,
+                  nw,
+                  nth){
+  a <- windowed_corpus(max_sentences,corpus,ws)
+  WW_all <- get_WW_training(wcorpus = a,
+                            max_train = max_sentences,
+                            training_intervals = ti,
+                            n_words=nw)
+  WW_cosines <- lapply(WW_all,cosine)
+  the_results <- get_rsquared(WW_cosines,nth,ws)
+  return(the_results)
+}
+
+#runWW(5000,corpus,ws=8,ti=c(100,200,1000,2000),nw=100,nth=nth_similarity)
+
+library(foreach)
+
+r <- foreach(i=3:5,.combine='rbind') %do% runWW(5000,
+                                                corpus,
+                                                ws=i,
+                                                ti=c(100,200,1000,2000),
+                                                nw=100,
+                                                nth=nth_similarity)
+
+
+```
+

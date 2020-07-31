@@ -1,0 +1,7 @@
+^ITS2\.Rproj$
+^\.Rproj\.user$
+^_pkgdown\.yml$
+^data-raw$
+^manuscript$
+^vignettes/som\.Rmd$
+^LICENSE\.md$

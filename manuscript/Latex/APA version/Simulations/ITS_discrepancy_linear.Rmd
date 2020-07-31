@@ -1,0 +1,247 @@
+---
+title: "ITS Discrepancy"
+author: "Matt Crump"
+date: "11/18/2019"
+bibliography: ITS.bib
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+```{r}
+library(RsemanticLibrarian)
+library(LSAfun)
+library(ggplot2)
+library(ggcorrplot)
+library(ggpubr)
+```
+
+## Define some functions
+
+```{r}
+row_H <- function(x){
+  if(sum(x-x[1])==0) return(1)
+  return(-1*sum(x*log2(x), na.rm=TRUE))
+}
+
+matrix_H <- function(x){
+  return(mean(apply(x,1,row_H)))
+}
+
+sim_I <- function(x){
+  max_error <- dim(x)[1]*dim(x)[2]*4
+  # all ones matrix
+  same_error <- sum((x - matrix(1,ncol=dim(x)[2],nrow =dim(x)[2]))^2)
+  # identity matrix
+  diff_error <- sum((x - diag(dim(x)[1])^2))
+  
+  return(log(same_error/diff_error))
+}
+
+
+higher_order_sim <-  function(x,range=1:5, graph=FALSE){
+  if(graph==TRUE){
+    cor_plots <- list()
+    sim_save <- list()
+    cor_plots[[1]] <- ggcorrplot(x, show.legend = FALSE)
+    sim_save[[1]] <- x
+  }
+  informativeness <- sim_I(x)
+  for(i in range){
+    if(i ==1){
+      higher <- cosine(x)
+      informativeness <- c(informativeness,sim_I(higher))
+      if(graph==TRUE) {
+        cor_plots[[1+i]] <- ggcorrplot(higher, show.legend = FALSE)
+        higher[is.na(higher)]<-0
+        sim_save[[1+i]] <- higher
+      }
+    }else{
+      higher <- cosine(higher)
+      informativeness <- c(informativeness,sim_I(higher))
+      if(graph==TRUE) {
+        higher[is.na(higher)]<-0
+        sim_save[[1+i]] <- higher
+        cor_plots[[1+i]] <- ggcorrplot(higher, show.legend = FALSE)
+      }
+    }
+  }
+  
+  if(graph==TRUE) return(list(informativeness,plots=cor_plots, sims=sim_save))
+  if(graph==FALSE) return(informativeness)
+}
+
+```
+
+## Discrepancy encoding
+
+How does ITS become sensitive to the structure of a corpus if it employs a discrepancy encoding rule at encoding? 
+
+This is a computationally expensive encoding rule, as ITS must be trained one sentence at a time to implement it. Nevertheless, here is a brief investigation. There are three attempts, the last one seems to work pretty well.
+
+### Attempt one: Raw discrepancy
+
+MINERVA-AL implements discrepancy encoding in the extreme. When a probe is applied to memory an echo is generated. The difference between the probe and the echo (probe - echo) is then stored as a new trace, rather than the probe. This amounts to saying the only thing you store in memory is the difference between what you expected to happen given the probe, and what did happen. I implement this rule here on an artificial language defined by a topic-word probability matrix. The T-W matrix has 10 topics, each with their own word probability distributions. There is reasonable overlap in word usage across the topics, but also some unique word usage.
+
+```{r}
+frequency_matrix <- matrix(
+  sample(1:100,10*100,replace=TRUE),
+  byrow=TRUE,
+  ncol=100,
+  nrow=10
+)
+
+overlap <- matrix(0,ncol=100,nrow=10)
+overlap[1, 1:15] <- 1
+overlap[2, 11:25] <- 1
+overlap[3, 21:35] <- 1
+overlap[4, 31:45] <- 1
+overlap[5, 41:55] <- 1
+overlap[6, 51:65] <- 1
+overlap[7, 61:75] <- 1
+overlap[8, 71:85] <- 1
+overlap[9, 81:95] <- 1
+overlap[10, c(1:5,91:100)] <- 1
+
+frequency_matrix <- frequency_matrix*overlap
+prob_matrix <- frequency_matrix/rowSums(frequency_matrix)
+veridical_sims <- cosine(prob_matrix)
+
+nth_similarity <- higher_order_sim(veridical_sims,1:5, graph=TRUE)
+
+```
+
+This piece is the function to generate sentences from the language to form the corpus.
+
+```{r}
+# sentence generator function
+generate_sentence <- function(num_to_make=100,
+                              s_length_range= 4:10,
+                              topics_to_sample = 1:10,
+                              topic_prob = rep(.1,10),
+                              prob_mat = prob_matrix){
+  all_sentences <- list()
+  for(i in 1:num_to_make){
+    sample_topic <- sample(topics_to_sample,1, prob = topic_prob)
+    sample_length <- sample(s_length_range)
+    sample_sentence <- c(sample(1:dim(prob_mat)[2],sample_length,
+                                replace=TRUE,
+                                prob=prob_mat[sample_topic,]))
+    all_sentences[[i]] <- sample_sentence
+  }
+  return(all_sentences)
+}
+```
+
+## parametric weighted discrepancy
+
+To complete this, it seems that a little bit of discrepancy encoding could be helpful. Perhaps there is a sweet spot, as was found by @johnsRoleNegativeInformation2019. So what's the right amount?
+
+Here I repeat the above simulation across 6 levels of discrepancy weighting (.01, .1, .2, .3, .4, and .5).
+
+```{r}
+corpus <- generate_sentence(num_to_make=5000,
+                             s_length_range= 10:20,
+                             topics_to_sample = 1:10,
+                             topic_prob = rep(.1,10),
+                             prob_mat = prob_matrix)
+
+environment <- diag(100)
+
+## populate ITS memory
+
+its_memory <- matrix(0,ncol=dim(environment)[2],nrow=length(corpus))
+for(i in 1:length(corpus)){
+  its_memory[i,] <- colSums(environment[corpus[[i]],])
+}
+
+all_results <- data.frame()
+for(dw in c(.01,.1,.2,.3,.4,.5)){
+  training <- c(100,500,1000,5000)
+  its_vector_list <- list()
+  for(t in 1:length(training)){
+    print(t)
+    
+    discrepancy_memory <- matrix(0, ncol=100, nrow=training[t])
+    #discrepancy_memory[1,] <- normalize_vector(runif(100,0,1))
+    discrepancy_memory[1,] <- normalize_vector(its_memory[1,])
+    discrepancy_memory[2,] <- normalize_vector(its_memory[2,])
+    for(j in 3:training[t]){
+      probe <- normalize_vector(its_memory[j,])
+      #probe <- its_memory[j,]
+      activations <- cosine_x_to_m(probe,discrepancy_memory[1:j-1,])
+      if(sum(activations==0) == length(activations)){
+        discrepancy_memory[j,] <- probe
+      } else {
+        #activations[activations !=0] <- 1
+        activations <- activations
+        echo <- colSums(as.numeric(activations)*discrepancy_memory[1:j-1,])
+       # discrepancy_memory[j,]<-normalize_vector(probe-(dw*normalize_vector(echo)))
+        discrepancy_memory[j,]<-normalize_vector(probe-(dw*normalize_vector(echo)))
+      }
+    }
+    
+    semantic_vectors <- matrix(0,ncol=100, nrow=100)
+    for(p in 1:100){
+      probe <- environment[p,]
+      activations <- cosine_x_to_m(probe,discrepancy_memory)
+      #activations[activations !=0] <- 1
+      activations <- activations
+      echo <- colSums(as.numeric(activations)*(discrepancy_memory))
+      semantic_vectors[p,] <- echo
+    }
+    the_cosines <- cosine(t(semantic_vectors))
+    the_cosines[is.na(the_cosines)] <- 0
+    its_vector_list$vectors[[t]] <- the_cosines
+    its_vector_list$plot[[t]] <- ggcorrplot(the_cosines, show.legend = FALSE)
+    its_vector_list$sims1[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[1]]))^2
+    its_vector_list$sims2[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[2]]))^2
+    its_vector_list$sims3[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[3]]))^2
+    its_vector_list$sims4[[t]] <- cor(c(the_cosines),c(nth_similarity$sims[[4]]))^2
+  }
+  nth_df <- data.frame(sims = c(its_vector_list$sims1,
+                              its_vector_list$sims2,
+                              its_vector_list$sims3,
+                              its_vector_list$sims4),
+                     training = rep(training,4),
+                     order = as.factor(rep(1:4, each=length(training))),
+                     discrepancy =dw)
+  all_results <- rbind(all_results,nth_df)
+}
+
+ITS_encoding_linear <- all_results
+save(ITS_encoding_linear,file="ITS_encoding_linear.RData")
+```
+
+
+The graph shows how ITS becomes sensitive to 1st to 4th order word-word similarity structure in the artificial language as a function of training, and as a function of discrepancy weighting. 
+
+There appear to be some interesting influences here. First, too much discrepancy encoding (.5) is way too much. Before that, all smaller amounts of discrepancy encoding are working quite well. It seems that around .2, ITS actually develops greater sensitivity to the first-order word-word similarities. This is quite remarkable, as without discrepancy encoding, ITS seems to prefer the second order. More generally, the amount of discrepancy encoding seems to change the ordering and relative strength of ITS sensitivie to different orders of word-word similarity. neato.
+
+```{r}
+ggplot(all_results, aes(x=training,y=sims, group=order, color=order))+
+  geom_point()+
+  geom_line()+
+  ylab("ITS word vectors to nth order word vectors") +
+  facet_wrap(~discrepancy)
+
+```
+
+
+# References
+
+
+
+
+
+
+
+
+

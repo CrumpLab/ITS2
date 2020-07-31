@@ -1,0 +1,458 @@
+---
+title             : "Controlling the retrieval of general vs specific semantic knowledge in the instance theory of semantic memory"
+shorttitle        : "Negative information and expectation subtraction"
+
+author: 
+  - name          : "Matthew Crump"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "2900 Bedford Avenue, Brooklyn, NY"
+    email         : "mcrump@brooklyn.cuny.edu"
+  - name          : "Randall K. Jamieson"
+    affiliation   : "3"
+  - name          : "Brendan Johns"
+    affiliation   : "4"
+  - name          : "Michael Jones"
+    affiliation   : "4"
+
+affiliation:
+  - id            : "1"
+    institution   : "Brooklyn College of CUNY"
+  - id            : "2"
+    institution   : "Graduate Center of CUNY"
+  - id            : "3"
+    institution   : "University of Manitoba"
+  - id            : "4"
+    institution   : "McGill University"
+  - id            : "5"
+    institution   : "Indiana University"
+
+authornote: |
+  Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
+
+  Enter author note here.
+
+abstract: |
+  No abstract yet
+  
+keywords          : "keywords"
+wordcount         : "X"
+
+bibliography      : ["ITS.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "jou"
+output            : papaja::apa6_pdf
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+library(tidyverse)
+library(ggcorrplot)
+library(ggpubr)
+library(LSAfun)
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+# Introduction
+
+Distributional models of semantics produce word embeddings sensitive to word co-occurrence structure in natural text corpora. Words appearing in similar local contexts (sentences, paragraphs) have more similar word embeddings than words appearing in different local contexts. The quality of word embeddings depends partly on their intended use. From an applied perspective, word-embeddings could be used to train a classifier (e.g., for sentiment analysis) and their quality assessed by classifier accuracy. From a basic perspective, distributional models have been forwarded as models of semantic knowledge and word-embedding quality is often measured by fits to human performance in semantic tasks. In both cases, word embedding quality depends on managing base rates of word occurence in natural text. For example, high frequency words that appear across contexts can easily dominate semantic vectors, causing all embeddings to become globally more similar and less indicative of nuanced meaning. Standard approaches to managing base rate information have questionable cognitive plausibility. The present work shows that a merger of assumptions between two instance-based memory models, the instance theory of semantics (ITS, @jamiesonInstanceTheorySemantic2018a) and the instance theory of associative learning (MINERA-AL, @jamiesonInstanceTheoryAssociative2012), provides a cognitively plausible means of managing base rate information in the construction of word embeddings.
+
+Distributional models employ various tactics to manage base rates of word occurence. The widespread practice of excluding high frequency stop words is a tacit recognition of base rate issues. Word-embeddings become less distinctive and meaningful when stop words are included because stop words co-occur frequently with all words. Stop word exclusion is often arbitrary and does not control for base rate influences from remaining words included in the corpus. Early models like LSA [@landauerSolutionPlatoProblem1997] dealt with base rates by transformation. For example, word frequencies were log transformed and divided by their entropy across document contexts. The log transform compresses frequency counts, and the division by entropy weights words by the specificity of their occurence in local contexts. As a result, high-frequency words ubiquitous across contexts (high entropy) are weighted less strongly than words peculiar to specific contexts (low entropy). More recent neural network models like word2vec [@mikolovDistributedRepresentationsWords2013] deal with base rates by a process of subsampling adversial examples during training. For example, network weights are modified by prediction error from positive and negative examples. And, the negative examples are typically sampled randomly as function of their word frequency. Importantly, word2vec produces high-quality word embeddings that often explain more variance in human semantic judgments compared to other models [@manderaExplainingHumanPerformance2017a], and these improvements have been attributed to the subsampling procedure.
+
+Although we are optimistic that semantic cognition can be profitably understood in terms of distributional models, we question the cognitive plausibility of the above approaches to managing base rate information. For example, it is unlikely that people fail to encode stop words, it is unclear how they would weight word frequency knowledge by information theoretic transforms (or apply singular value decomposition), and we doubt that people routinely employ negative sub-sampling as they encounter words in everyday life. In our view, a satisfactory model should detail a cognitively plausible process for managing base rate of occurence information in constructing semantic knowledge. We propose a cognitive solution that merges insights form theoretical traditions in memory and learning.
+
+@jamiesonInstanceTheorySemantic2018a applied instance-based memory theory to the problem of distributional semantics, combining BEAGLE-style word representations with MINERVA 2 encoding and retrieval operations to create ITS. ITS differs from standard distributional models in assuming instance-based representation rather than prototype representation. Semantic vectors in a standard BEAGLE model are memory-free prototypes. They are memory free because BEAGLE does not encode individual sentences, but instead compounds them into representations of individual words. They are prototypes because vectors are an aggregate sum over all of the sentence contexts in which particular words occur. These prototypical semantic vectors fail to capture polysemy. For example, "bank" could refer to a river or financial instution; but, a prototype representation glosses over the distinction and creates a single vector partway between the two meanings. By contrast, ITS assumes a role for memory to encode individual sentences as traces memory, and it produces semantic vectors for words at the time of retrieval. Retrieval is similarity driven and context-sensitive, allowing production of semantic vectors tailored to the local context (e.g., river vs. piggy) of a probe word (e.g., bank).
+
+Following standard practice, ITS used stop word exclusion to manage base rate information. Including stop words in BEAGLE style representations is highly problematic. For example, ITS used random vectors for each word, and represents sentences in memory by superposition of the word vectors in each sentence. Including stop words causes all sentences to become more similar to each other because they all routinely contain stop words. Consequently, retrieved semantic vectors become globally more similar and less sensitive to differences in word meaning. The purpose of this paper is to show that ITS can be modified to handle base rate information by including additional encoding and retrieval assumptions motivated by traditional learning theory. Briefly, instance-based processing assumptions from MINERVA 2 underpinning ITS have also been extended in MINERVA-AL to the problem of associative learning [@jamiesonInstanceTheoryAssociative2012]. MINERVA-AL accounted for numerous associative learning phenomena but used a discrepancy encoding rule, whereby only unexpected aspects of a novel experience were stored to memory. We show that a form of discrepancy encoding (termed weighted expectancy subtraction) can be applied in ITS to balance base rate information and provide control over the construction of more general or specific word meanings.
+
+As an overview we first explain ITS and the proposed modifications. We are in preliminary stages of testing our approach, so we have elected to train ITS on an artificial language. The benefit of this approach is a clear accounting of how the original and modified versions of (ITS 2) respond to known co-occurence structure in the language. Following the model description and simulations we discuss how the assumptions of ITS 2 may be tested using a natural language corpus.
+
+# ITS and ITS 2
+
+ITS 2 shares the same definition as its predecessor, except for the inclusion of weighted expectancy subtraction. If the weight is set to zero such that no expectancy is subtracted, then ITS 2 is identical to ITS. We first define ITS and then explain the ITS 2 modifications
+
+## Word representation
+
+ITS combined representational assumptions from BEAGLE [@jonesRepresentingWordMeaning2007] and processing assumptions from MINERVA 2 [@hintzmanMINERVASimulationModel1984;@hintzmanSchemaAbstractionMultipletrace1986;@hintzmanJudgmentsFrequencyRecognition1988]. From BEAGLE, words are treated as perceptual objects with no pre-existing semantic similarity. Each word is assigned an environment vector by randomly sampling $n$ values from a normal distribution ($\mu = 0$, $\sigma = 1/n$), where $n$ determines the dimensionality of the vector space. As a result, all words are ortho-normal in expectation, and have an average of zero similarity to each other. ITS can accommodate other representational assumptions, and for clarity we adopt a simple identity matrix.
+
+## Memory
+
+In ITS, slices of experience with words in context are represented as composite traces and stored as new row entries to a memory matrix. For example, committing a sentence to memory involves summing the environmental vectors for the words in the sentence:
+
+\begin{equation}
+M_i = c_i = \sum_{j=1}^{j=h} w_{ij}
+(\#eq:memory)
+\end{equation}
+
+$M_i$ is the memory matrix, and $c_i$ is a sentence context. $c_i$ is stored in a new row in $M-I$ as a composite trace by summing the $w_{ij}$ environment vectors for each word, from $1$, to $h$, in the sentence. For example, the sentence "I like cats" is the sum of $w_{I} + w_{like} + w_{cats}$. The number of words inside a trace is a windowing parameter that must be larger than one word, otherwise the memory will return perceptually similar traces, rather than semantically similar ones.
+
+## Retrieval
+
+Word meaning is constructed at the time of retrieval. ITS probes memory with a word, and returns an echo response. The echo response is taken as the semantic vector for the word. Words are compared for semantic similarity by comparing their respective echoes. Retrieval and echo construction follow MINERVA 2. 
+
+The echo is constructed in two steps. First, an environment vector for a word $w_i$ serves as a probe to memory $M$, and the cosine similarity between $w_i$ and all traces $M$ are computed to produce a vector of trace activations $a_i$:
+
+\begin{equation}
+a_i = (\frac{\sum_{j=1}^{j=n}p_j \times M_{ij}}{\sqrt{\sum_{j=1}^{j=n}p_j^2}\sqrt{\sum_{j=1}^{j=n}M_{ij}^2}})^{tau}
+(\#eq:activation)
+\end{equation}
+
+where, $a_i$ is the activation (cosine similarity to probe) of trace $i$ in memory, $p_j$ are the $jth$ features of the probe, $M_{ij}$ are the $jth$ features of each trace $i$ in memory, and $n$ is the number of columns in memory setting the dimensionality of the vector space. The vector of activations is raised to a power, ${tau}$, controlling a retrieval gradient.
+
+The activation vector is record of similarity between the traces and the probe spanning the range $-1$ to $1$, with $a_i = 1$ when a trace is identical to the probe, $a_i = 0$ when a trace is orthogonal to the probe, and $a_i = -1$ when the trace is opposite the probe.
+
+In the second step, the activated traces are summed to produce a composite memory response, called the echo. Specifically, all traces in memory are multiplied by their activations, and the echo is formed by summing the weighted traces:
+
+\begin{equation}
+e_j = \sum_{i=1}^{i=m}\sum_{j=1}^{j=n}a_i \times M_{ij}
+(\#eq:echo)
+\end{equation}
+
+where, $e_j$ is the $jth$ feature of the echo, $m$ is the number of traces in memory, $a_i$ is the activation of trace $i$, and $M_{ij}$ are the $jth$ values of each trace $i$ in memory. In ITS, the echo is used as the semantic representation for the probe word.
+
+As a result, semantic similarity, $r$, between two words is computed between their respective echoes using a cosine:
+
+\begin{equation}
+r(p_1,p_2) = \frac{\sum_{j=1}^{j=n}e_{1j} \times{} e_{2j}}{\sqrt{\sum_{j=1}^{j=n}e_{1j}^2}\sqrt{\sum_{j=1}^{j=n}e_{2j}^2}}
+(\#eq:semanticsim)
+\end{equation}
+ 
+Origianlly, ITS fixed $tau$ at a power of 3, and varying tau, say from 0 to 5, changes the retrieval gradient. The retrieval gradient selectivity in the composition of the echo. When $tau$ is near zero, the retrieval gradient is a squashing square function and all activated traces are summed directly. When $tau$ is 1, traces are weighted linearly by their similarities. When $tau$ is greater than 1, traces are weighted by a power function of their similarities. In this case, echo content contains traces that are increasingly similar to the probe.
+
+We now turn to modifications in ITS 2 that allow it to manage base rate information through a process of weighted expectancy subtraction. This process can be implemented in the model during encoding throughout training, or only at retrieval after training is complete. The encoding variant is more computationally expensive, as the contents of ITS 2 memory must be transformed over the course of training the model, on a trace by trace basis.
+
+## ITS 2: weighted expectancy subtraction at encoding
+
+ITS 2 implements weighted expectancy subtraction during encoding in a similar manner to MINERVA-AL's discrepancy encoding rule. The difference is the subtraction between the probe and the echo is weighted by $x$, controlling the amount of expectation to be subtracted. Weighted expectancy subtraction is applied at each step across training. For example, when a new sentence is experienced, the sentence context vector $c_i$ is used as a probe to memory to generate an echo. The echo represents the memories expectation for the new sentence. If the new sentence is fully expected, then the memory can reconstruct the new sentence on the basis of its existing traces. The magnitude of the echo vector contains the sum of many traces, and is generally much larger than the magnitude of the sentence context vector. As a result, before subtraction, the probe and echo vectors are normalized,
+
+\begin{equation}
+c'_j = \frac{c_j}{\max | c_{j,n} |}
+(\#eq:normprobe)
+\end{equation}
+
+where, $c_j$ is a probe vector, and the elements of $c_j$ are divided by the largest absolute value in $c_j$, to produce the normalized $c'_j$. Similarly, the echo is normalized such that, 
+
+\begin{equation}
+e'_j = \frac{e_j}{\max | e_{j,n} |}
+(\#eq:normecho)
+\end{equation}
+
+where, $e_j$ is an echo vector, and the elements of $e_j$ are divided by the largest absolute value in $e_j$, to produce the normalized $e'_j$.
+
+Next, the new trace encoded to memory is defined by subtraction of a weighted normalized echo from the normalized probe,
+
+\begin{equation}
+M_{ij} = c'_j  - xe'_j
+(\#eq:ITS2encoding)
+\end{equation}
+
+where, $M_{ij}$ is the new row entry in the memory matrix, and $x$ is a weighting parameter varying from 0 to 1, controlling how the extent which the normalized echo is subtracted from the normalized probe. When $x$ is set to 0, ITS 2 becomes equivalent to ITS.
+
+## ITS 2: weighted expectancy subtraction at retrieval
+
+ITS 2 can also conduct a similar operation of weighted expectancy subtraction at the time of retrieval. In this case, memory is constructed identically to ITS, except weighted expectancy subtraction occurs at retrieval through a two-step iterative retrieval process.  A probe word generates an echo from memory, and the echo is submitted in an iterative retrieval step to generate a second echo. The semantic representation for the word is taken as a weighted subtraction of the normalized second echo from the normalized first echo.
+
+The first echo $e_1$ is generated in the usual way, but then resubmitted as a probe to construct $e_2$ by the same equations \@ref(eq:activation) and \@ref(eq:echo) used to construct $e_1$. Both $e_1$ and $e_2$ are normalized following equation \@ref(eq:normecho). Whereas in ITS, the semantic representation for a word is defined as $e_1$, the semantic representation for a word with weighted expectancy subtraction at retrieval in ITS 2 is:
+
+\begin{equation}
+s_i = e'_1 - xe'_2
+(\#eq:ITS2retrieval)
+\end{equation}
+
+where, $s_i$ is the semantic representation for the $ith$ word, and $x$ is a weighting parameter varying from 0 to 1 controlling the amount of $e'_2$ subtracted from $e'_1$. Again, when $x$ is set to 0, ITS 2 becomes equivalent to ITS.
+
+# Simulations
+
+```{r artlang, fig.width = 6.5, fig.height = 3.5,fig.cap="A: The topic-word probability matrix defining the artificial language. Darker colors represent higher probability of word occurence. B1-4: Word-word similarity matrices from the first to fourth order.", out.width="\\textwidth", fig.env="figure*", fig.align='center'}
+library(ggplot2)
+library(dplyr)
+
+frequency_matrix <- matrix(
+  sample(1:100,10*100,replace=TRUE),
+  byrow=TRUE,
+  ncol=100,
+  nrow=10
+)
+
+overlap <- matrix(0,ncol=100,nrow=10)
+overlap[1, 1:15] <- 1
+overlap[2, 11:25] <- 1
+overlap[3, 21:35] <- 1
+overlap[4, 31:45] <- 1
+overlap[5, 41:55] <- 1
+overlap[6, 51:65] <- 1
+overlap[7, 61:75] <- 1
+overlap[8, 71:85] <- 1
+overlap[9, 81:95] <- 1
+overlap[10, c(1:5,91:100)] <- 1
+
+frequency_matrix <- frequency_matrix*overlap
+prob_matrix <- frequency_matrix/rowSums(frequency_matrix)
+
+library(reshape2)
+longData <-melt(prob_matrix)
+longData<-longData[longData$value!=0,]
+longData <- longData %>%
+  rename(p = value)
+A1 <- ggplot(longData, aes(x = Var2, y = Var1)) + 
+  geom_tile(aes(fill=p)) + 
+  scale_fill_gradient(low="white", high="black") +
+  labs(x="Words", y="Topics") +
+  theme_bw() + theme(axis.text.x=element_text(size=9, angle=0, vjust=0.3),
+                     axis.text.y=element_text(size=9),
+                     plot.title=element_text(size=11))+
+  scale_x_continuous(breaks=c(1,seq(10,100,10)), position='top')+
+  scale_y_reverse(breaks=1:10) +
+  theme(legend.position = "right")
+
+library(LSAfun)
+library(patchwork)
+library(ggpubr)
+
+first <- cosine(prob_matrix)
+second <- cosine(first)
+third <- cosine(second)
+fourth <- cosine(third)
+
+#ggarrange(
+s1 <- ggcorrplot(first, show.legend = FALSE, colors = c("white","white","black"),
+                 outline.color = "white") + 
+  theme_classic(base_size = 10) +
+  theme(legend.position = 'none')+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+s2 <- ggcorrplot(second, show.legend = FALSE, colors = c("white","white","black"),
+                 outline.color = "white")+ 
+  theme_classic(base_size = 10) +
+  theme(legend.position = 'none')+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+s3 <- ggcorrplot(third, show.legend = FALSE, colors = c("white","white","black"),
+                 outline.color = "white")+ 
+  theme_classic(base_size = 10) +
+  theme(legend.position = 'none')+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+s4 <- ggcorrplot(fourth, show.legend = FALSE, colors = c("white","white","black"),
+                 outline.color = "white")+ 
+  theme_classic(base_size = 10) +
+  theme(legend.position = 'none')+
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+#ncol=2, nrow=2, labels = c(1,2,3,4)
+#)
+
+#A1 | s1 | s2 | s3 | s4
+ggarrange(A1, ggarrange(s2,s2,s3,s4,ncol=4), nrow=2)
+
+  
+```
+
+Our aim was to characterize how ITS and ITS 2 develop sensitivity to word co-occurence structure. First, we created an artificial language with known co-occurence structure. Next, we trained ITS on sentences from the artificial language and compared the semantic structure of ITS vectors to direct measures of the semantic structure of the language. Here, we were interested in determining which aspects of the language were recovered by ITS. Last, we determined whether the weighted expectancy subtraction process in ITS 2 would allow it to recover more veridical aspects of the co-occurence structure than ITS. 
+
+## Artificial language
+
+The artificial language contained no grammar, and only semantic structure based on word co-occurrence. The simplistic form offers a transparent window into the transformations of ITS 2. We assume that semantic topic generators use collections of words to discuss a given topic, and that word usage partially overlaps across topics. We define the language to contain 100 possible words, and 10 possible topics. Each topic uses 15 words, and overlaps by five words with the former and latter topics. Each topic had a random word-occurrence probability distribution that summed to one. <!--Specifically, for each topic we randomly sample with replacement 15 numbers between 1 and 100. The topic-word probability distribution for each topic is the random vector divided by its sum. --> Figure XA depicts the topic-word probability matrix defining the artificial language. A corpus is generated by randomly sampling a topic (equal probability), and then constructing a sentence from the topic by sampling $n$ words as a function of their probability. Sentence-size varied randomly between 10 and 20 words per sentence. A corpus included 5,000 sentences.
+
+The purpose of the simulations was to compare the semantic spaces generated by ITS and ITS 2 to known properties of the semantic space from the language. We defined the known semantic space at various orders of semantic similarity. At the first order, the true semantic representation for a word is the column vector for each word in the topic-word probability matrix above. To illustrate the semantic space we computed the cosine similarity between each word (using their column vectors) and plotted the similarity matrix. The word-word similarity matrix in figure \@ref(fig:artwordsim1) shows the structure of the artificial language that models are ostensibly attempting to recover. Words are more similar to each other within their topics than between topics, and there is some overlap because word usage overlaps across the topics. Words in topic one are not at all similar to words in topic nine because there is no overlap in word usage between those topics. The remaining panels in figure \@ref(fig:artwordsim1) show word-word similarity in higher order similarity space up to the fourth order. A higher order similarity space uses a lower-order space to derive a higher order one. For example, the second-order space uses columns from the first-order similarity matrix as word embeddings to compute a second word-word similarity space, and so on. In our language, because of word overlap between topics, words become increasingly similar to one another in higher order space. A veridical model would recover the first-order semantic space.
+
+<!--Here we use higher order word-word similarity spaces to refer to structural properties of the artificial language. These computations have also been used as a method to produce semantic vectors. For example, consider the semantic representations from LSA that relies upon a document-term matrix to represent word co-occurrence. Here, the raw frequency vector of word occurrence across documents can be used as a semantic representation. However, LSA improves upon those representations by singular value decomposition of the document-term matrix. Critically, the the number of singular value dimensions used to represent words determines the usefulness of the representation, suggesting some form of compression is important in constructing the representations. However, X has shown that singular value decomposition can be replaced by a second-order similarity transform. Here, s word-word similarity matrix is computed from the raw frequency vectors in the document-term matrix, and then a second-order word-word similarity matrix is computed from the first. Impressively, the second order word-word similarity space has properties like the word-word similarity space derived from singular value decomposition in LSA. -->
+
+
+## Simulation 1: Simple ITS
+
+We trained a simplified version of the original ITS on 5000 sentences, using one-hot coding, or the identity matrix as environment vector for the words. Wach word was coded as a 1, with 99 zeroes. The position of the 1 in the vector refers to the $nth$ word in the corpus. As a result, the memory matrix is equivalent to a document-term matrix of raw term frequencies occurring in each document. We used a range of retrieval gradients, setting tau between 0 and 9. We evaluated ITS at different training intervals, including memory for 100, 500, 1000, and 5000 sentences. At each interval we computed the echo as semantic representations for each word, and then a word-word similarity matrix from those vectors. To determine which aspects of the artificial language simple ITS recovered, we computed $R^2$ between the ITS word-word similarity space, and the first to fourth order word-word similarity spaces derived directly from artificial language.
+
+```{r ITSsimple, fig.cap="$R^2$ values between simple ITS word-word similarity space, and the first to fourth order word-word similarity spaces derived from the artificial language as a function of training, and retrieval gradient (tau)"}
+load("Simulations/ITS_simple.RData")
+simple$tau[simple$tau==.01]<-0
+# ggplot(simple, aes(x=training,y=sims, group=order, linetype=order,
+#                    shape=order))+
+#   geom_point()+
+#   geom_line()+
+#   xlab("Sentence Memory")+
+#   ylab(expression(R^2))+
+#   scale_y_continuous(breaks=seq(.5,1,.1))+
+#   coord_cartesian(ylim=c(.5,1))+
+#   theme_classic()+
+#   theme(axis.text.x = element_text(angle = 90))+
+#   facet_wrap(~tau)
+
+ggplot(simple, aes(x=tau,y=sims, group=order, linetype=order,
+                   shape=order))+
+  geom_point()+
+  geom_line()+
+  xlab(expression(tau))+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(.5,1,.1))+
+  scale_x_continuous(breaks=c(0,1,3,5,7,9))+
+  coord_cartesian(ylim=c(.5,1))+
+  theme_classic(base_size=18)+
+  theme(axis.text.x = element_text(angle = 0))+
+  facet_wrap(~training)
+
+```
+
+Simple ITS performed very well in recovering the structure of artificial language. Most important, figure \@ref(fig:ITSsimple) shows that simple ITS is most sensitive to the second-order similarity structure of the artificial language. More generally, ITS became more sensitive to the language over traingin, and less sensitive as tau increased. The fact that simple ITS prioritizes the second order over the first is its fatal flaw. The second order space is an overgeneralized version of the first, and blurs out the finer distinctions between word usage within the topic structures that generate the words. This is a base rate of word occurrence issue. Simple ITS recruits base rate word occurrence from across the topic generators. As a result, in the second order space, semantic vectors for words that overlap between topics take on an average meaning between the topics, rather than idiosyncratic meaning within each topic. 
+
+
+## Simulation 2: ITS 2 encoding
+
+In simulation 2 we train ITS 2 with weighted expectancy subtraction at encoding on the same artificial language. Critically, we show that weighted expectancy subtraction can cause ITS 2 to become more sensitive to first order word-word similarity than higher orders. In the simulations we vary the value of $x$ (from .01 to .5) to subtract different amounts of the echo from the probe. The value of $x$ causes systematic differences in ITS 2's sensitivity to higher order similarity structure. For clarity, we set $tau$ to 1. 
+
+```{r ITSencodinglinear, fig.cap="$R^2$ values between simple ITS word-word similarity space, and the first to fourth order word-word similarity spaces derived from the artificial language as a function of training, and weighted expectancy subtraction at encoding. The retrieval gradient (tau) was set to 1."}
+load("Simulations/ITS_encoding_linear.RData")
+# ggplot(ITS_encoding_linear, aes(x=training,y=sims, group=order, linetype=order,
+#                         shape=order))+
+#   geom_point()+
+#   geom_line()+
+#   xlab("Sentence Memory")+
+#   ylab(expression(R^2))+
+#   scale_y_continuous(breaks=seq(0,1,.2))+
+#   coord_cartesian(ylim=c(0,1))+
+#   theme_classic()+
+#   theme(axis.text.x = element_text(angle = 90))+
+#   facet_wrap(~discrepancy)
+
+ITS_encoding_linear$discrepancy <- as.factor(ITS_encoding_linear$discrepancy)
+ITS_encoding_linear$training <- as.factor(ITS_encoding_linear$training)
+
+ggplot(ITS_encoding_linear, aes(x=discrepancy,y=sims, group=order, linetype=order,
+                        shape=order))+
+  geom_point()+
+  geom_line()+
+  xlab("Expectancy Subtraction")+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(0,1,.2))+
+  coord_cartesian(ylim=c(0,1))+
+  theme_classic(base_size=18)+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~training)
+```
+
+The effect of weighted expectancy subtraction at encoding is remarkable. First, ITS 2 recovered word-word similarity structure of the artificial language almost perfectly. Second, the amount of expectancy subtraction at encoding ($x$) modified the ordering of word-word similarity sensitivity. For example, when $x=.01$, ITS 2 was most sensitive to second order word-word similarity, but become most sensitive to first-order word-word similarity as $x$ increased. Finally, increasing $x$ too much caused overall sensitivity to decline.
+
+## Simulation 3: ITS 2 retrieval
+
+In simulation 3 we train ITS 2 with weighted expectancy subtraction at retrieval only on the same artificial language. We repeated the above simulation exactly, but used the equations involving one iterative retrieval step to conduct the weighted expectancy subtraction at retrieval. We also used a $tau$ of 0 to compute both echoes, or a square retrieval gradient. We chose this value to foreshadow a clear correspondence between transformations of the defined artificial language in higher order similarity space, and what ITS 2 is achieving at retrieval by subtracting a portion of the second echo from the first.
+
+```{r ITSretrieval, fig.cap="$R^2$ values between simple ITS word-word similarity space, and the first to fourth order word-word similarity spaces derived from the artificial language as a function of training, and weighted expectancy subtraction at retrieval."}
+load("Simulations/ITS_retrieval.RData")
+# ggplot(ITS_retrieval, aes(x=training,y=sims, group=order, linetype=order,
+#                         shape=order))+
+#   geom_point()+
+#   geom_line()+
+#   xlab("Sentence Memory")+
+#   ylab(expression(R^2))+
+#   scale_y_continuous(breaks=seq(0,1,.2))+
+#   coord_cartesian(ylim=c(0,1))+
+#   theme_classic()+
+#   theme(axis.text.x = element_text(angle = 90))+
+#   facet_wrap(~discrepancy)
+
+ITS_retrieval$discrepancy <- as.factor(ITS_retrieval$discrepancy)
+ITS_retrieval$training <- as.factor(ITS_retrieval$training)
+
+ggplot(ITS_retrieval, aes(x=discrepancy,y=sims, group=order, linetype=order,
+                        shape=order))+
+  geom_point()+
+  geom_line()+
+  xlab("Expectancy substraction")+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(0,1,.2))+
+  coord_cartesian(ylim=c(0,1))+
+  theme_classic(base_size=18)+
+  theme(axis.text.x = element_text(angle = 90))+
+  facet_wrap(~training)
+```
+
+The results of Simulation 3 are just as remarkable as the previous simulation. ITS 2 does not need to make any assumptions about encoding in order to benefit from weighted expectancy subtraction. The pattern of Simulation 3 is almost identical to that of Simulation 2. Specifically, ITS 2 does a good job of learning the word-word similarity structure, and it becomes most sensitive to first-order word-word similarity structure as $x$ is increased. Again, increasing $x$ has diminishing returns. 
+
+```{r allsims, fig.width = 6.8, fig.height = 3,fig.cap="blah blah blah", out.width="\\textwidth", fig.env="figure*", fig.align='center', eval=TRUE}
+its<-ggplot(simple, aes(x=tau,y=sims, group=order, linetype=order,
+                   shape=order))+
+  geom_point()+
+  geom_line()+
+  xlab("Tau")+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(.5,1,.1))+
+  scale_x_continuous(breaks=c(0,1,3,5,7,9))+
+  coord_cartesian(ylim=c(.5,1))+
+  theme_classic(base_size = 11)+
+  theme(axis.text.x = element_text(angle = 0),
+        legend.position="top")+
+  facet_wrap(~training)
+
+its2e<-ggplot(ITS_encoding_linear, aes(x=discrepancy,y=sims, group=order, linetype=order,
+                        shape=order))+
+  geom_point()+
+  geom_line(size=.25)+
+  xlab("Expectancy Subtraction")+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(0,1,.2))+
+  coord_cartesian(ylim=c(0,1))+
+  theme_classic(base_size = 9)+
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position="top",
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(-6,-6,-6,-6))+
+  facet_wrap(~training)
+
+its2r<-ggplot(ITS_retrieval, aes(x=discrepancy,y=sims, group=order, linetype=order,
+                        shape=order))+
+  geom_point()+
+  geom_line(size=.25)+
+  xlab("Expectancy Subtraction")+
+  ylab(expression(R^2))+
+  scale_y_continuous(breaks=seq(0,1,.2))+
+  coord_cartesian(ylim=c(0,1))+
+  theme_classic(base_size = 9)+
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position="top",
+        legend.margin=margin(0,0,0,0),
+        legend.box.margin=margin(-6,-6,-6,-6))+
+  facet_wrap(~training)
+
+ggarrange(its2e,its2r, ncol=2)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
