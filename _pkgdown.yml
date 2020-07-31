@@ -21,6 +21,7 @@ navbar:
     - posters
     - experiments
     right:
+    - news
     - github
     - reference
   components:
