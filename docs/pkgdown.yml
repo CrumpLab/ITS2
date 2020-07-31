@@ -2,4 +2,7 @@ pandoc: 2.9.1.1
 pkgdown: 1.4.1
 pkgdown_sha: ~
 articles: []
+urls:
+  reference: https://crumplab.github.io/ITS2/reference
+  article: https://crumplab.github.io/ITS2/articles
 
