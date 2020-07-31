@@ -1,6 +1,8 @@
 Package: ITS2
 Title: Controlling the retrieval of general vs specific semantic knowledge in the instance theory of semantic memory
 Version: 0.0.0.9000
+URL: https://github.com/CrumpLab/ITS2
+BugReports: https://github.com/CrumpLab/ITS2/issues
 Authors@R: c(
     person(given = "Matthew J. C.",
            family = "Crump",
