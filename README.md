@@ -20,9 +20,9 @@ Abstract: Distributional models of semantic cognition commonly make simplifying 
 
 This is a [vertical](https://crumplab.github.io/vertical/) repository for:
 
-Crump, M. J. C., Jamieson, R. K., Johns, B. T., and Jones, M. N. (2020) Controlling the retrieval of general vs specific semantic knowledge in the instance theory of semantic memory.  In S. Denison., M. Mack, Y. Xu, & B.C. Armstrong (Eds.), Proceedings of the 42nd Annual Conference of the Cognitive Science Society (pp. 3261-3267). Cognitive Science Society
+Crump, M. J. C., Jamieson, R. K., Johns, B. T., and Jones, M. N. (2020) Controlling the retrieval of general vs specific semantic knowledge in the instance theory of semantic memory.  In S. Denison., M. Mack, Y. Xu, & B.C. Armstrong (Eds.), Proceedings of the 42nd Annual Conference of the Cognitive Science Society (pp. 3261-3267). Cognitive Science Society.
 
-This website contains links to the manuscript and supplementary files showing R code for the simulations. The source code for this website and project data is available in by clicking the github icon.
+This website contains links to the manuscript and supplementary files showing R code for the simulations. The source code for this website and project data is available by clicking the github icon.
 
 
 
